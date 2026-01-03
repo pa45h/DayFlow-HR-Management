@@ -43,7 +43,7 @@ function Signup() {
             );
 
             alert("Employee created successfully");
-            navigate("/dashboard");
+            navigate("/login");
         } catch (err) {
             setError(err.response?.data?.message || "Signup failed");
         } finally {
