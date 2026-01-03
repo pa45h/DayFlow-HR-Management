@@ -1,0 +1,27 @@
+{
+  "name": "dayflow",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "client": "cd client && npm start",
+    "server": "cd server && npm run dev",
+    "dev": "concurrently -n \"client,server\" -c \"bgBlue,bgGreen\" \"npm run client\" \"npm run server\""
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pa45h/DayFlow-HR-Management.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/pa45h/DayFlow-HR-Management/issues"
+  },
+  "homepage": "https://github.com/pa45h/DayFlow-HR-Management#readme",
+  "dependencies": {
+    "concurrently": "^9.2.1"
+  }
+}
