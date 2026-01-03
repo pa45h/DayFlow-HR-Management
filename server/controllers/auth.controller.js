@@ -1,80 +1,144 @@
-import User from "../models/user.model.js";
-import bcrypt from "bcrypt";
-import generateToken from "../utils/generatetoken.js";
+import jwt from "jsonwebtoken";
+import User from "../models/User.js";
+import Payroll from "../models/Payroll.js";
 
-/* ================= SIGNUP ================= */
-export const signup = async (req, res) => {
+// Generate JWT Token
+const generateToken = (id) => {
+  return jwt.sign({ id }, process.env.JWT_SECRET, {
+    expiresIn: "30d",
+  });
+};
+
+// @desc    Register new user
+// @route   POST /api/auth/signup
+// @access  Public
+const signup = async (req, res) => {
   try {
-    const { name, email, phone, password, role } = req.body;
+    const {
+      email,
+      password,
+      role,
+      firstName,
+      lastName,
+    } = req.body;
 
-    const userExists = await User.findOne({ email });
-    if (userExists) {
-      return res.status(400).json({ message: "User already exists" });
+    console.log('Signup request body:', req.body);
+    
+
+    // Validation
+    if (!email || !password || !firstName || !lastName) {
+      return res
+        .status(400)
+        .json({ message: "Please fill all required fields" });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    // Check if user exists
+    const userExists = await User.findOne({ email });
+    console.log('User exists:', userExists);
+    
 
-    await User.create({
-      name,
+    if (userExists) {
+      return res.status(400).json({
+        message: "User with this email or employee ID already exists",
+      });
+    }
+
+    // Create user
+    const user = await User.create({
+      // employeeId,
       email,
-      phone,
-      password: hashedPassword,
-      role,
+      password,
+      role: role || "employee",
+      firstName,
+      lastName,
+      // department,
+      // position,
     });
 
-    // ❌ NO TOKEN, NO COOKIE
-    res.status(201).json({
-      success: true,
-      message: "Signup successful. Please login.",
+    console.log('Created user:', user);
+
+    // Create default payroll entry
+    await Payroll.create({
+      user: user._id,
+      basicSalary: 0,
     });
 
+    console.log('Default payroll created for user:', user._id);
+
+    if (user) {
+      res.status(201).json({
+        _id: user._id,
+        employeeId: user.employeeId,
+        email: user.email,
+        role: user.role,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        token: generateToken(user._id),
+      });
+    }
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error(error);
+    res.status(500).json({ message: "Server error during signup", error: error.message });
   }
 };
 
-/* ================= LOGIN ================= */
-export const signin = async (req, res) => {
+// @desc    Authenticate user
+// @route   POST /api/auth/login
+// @access  Public
+const login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(401).json({ message: "User not found" });
+    if (!email || !password) {
+      return res
+        .status(400)
+        .json({ message: "Please provide email and password" });
     }
 
-    const isMatch = await bcrypt.compare(password, user.password);
+    // Check user
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(401).json({ message: "Invalid credentials" });
+    }
+
+    if (!user.isActive) {
+      return res.status(401).json({ message: "Account is deactivated" });
+    }
+
+    // Check password
+    const isMatch = await user.comparePassword(password);
+
     if (!isMatch) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
-    const token = generateToken(user._id);
-
-    // ✅ STORE TOKEN IN COOKIE
-    res.cookie("token", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    res.json({
+      _id: user._id,
+      employeeId: user.employeeId,
+      email: user.email,
+      role: user.role,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      token: generateToken(user._id),
     });
-
-    res.status(200).json({
-      success: true,
-      message: "Login successful",
-      user,
-    });
-
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error(error);
+    res.status(500).json({ message: "Server error during login" });
   }
 };
 
-/* ================= LOGOUT ================= */
-export const logout = async (req, res) => {
-  res.clearCookie("token");
-
-  res.status(200).json({
-    success: true,
-    message: "Logged out successfully",
-  });
+// @desc    Get current user
+// @route   GET /api/auth/me
+// @access  Private
+const getMe = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id).select("-password");
+    res.json(user);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
 };
+
+export { signup, login, getMe };
