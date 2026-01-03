@@ -16,6 +16,7 @@ const app = express();
  
 app.use(express.json());
 app.use(cookieParser());
+<<<<<<< HEAD
 app.use(cors());
 app.use(express.urlencoded({ extended: true }));
 
@@ -24,6 +25,10 @@ app.use('/api/users', userRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/leaves', leaveRoutes);
 app.use('/api/payroll', payrollRoutes);
+=======
+app.use(cors(
+));
+>>>>>>> 10c093ec571d6bb89bfe070032301ae20e3f1707
 
 app.get("/", (req, res) => {
   res.send("Hello, World!");
